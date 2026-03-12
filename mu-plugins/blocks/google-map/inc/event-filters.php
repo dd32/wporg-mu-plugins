@@ -338,14 +338,14 @@ function get_all_past_events( int $page, array $facets = array() ): array {
 		FROM `wporg_events`
 		WHERE
 			status = 'scheduled' AND
-			date_utc < NOW() AND
+			date_utc < %s AND
 			{$where['clauses']}
 		ORDER BY date_utc DESC
 		{$limit_sql}";
 
-	if ( $where['values'] ) {
-		$query = $wpdb->prepare( $query, $where['values'] );
-	}
+	$where_values = array_merge( array( gmdate( 'Y-m-d' ) ), $where['values'] ?? array() );
+
+	$query = $wpdb->prepare( $query, $where_values );
 
 	if ( 'latin1' === DB_CHARSET ) {
 		$events = $wpdb->get_results( $query );
@@ -366,13 +366,14 @@ function get_all_past_events_count(): int {
 	$count         = get_transient( $transient_key );
 
 	if ( ! $count ) {
-		$count = $wpdb->get_var( '
+		$count = $wpdb->get_var( $wpdb->prepare( '
 			SELECT COUNT( id ) as found_events
 			FROM `wporg_events`
 			WHERE
 				status = "scheduled" AND
-				date_utc < NOW()'
-		);
+				date_utc < %s',
+			gmdate( 'Y-m-d' )
+		) );
 
 		set_transient( $transient_key, $count, HOUR_IN_SECONDS );
 	}
